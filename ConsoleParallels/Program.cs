@@ -1,42 +1,53 @@
 ﻿using System.Diagnostics;
 
-int tasksCount = 10, startIndex = 0, endIndex = 0, subArrayLength;
-long resultSum = 0;
 
 int[] numbers = new int[10_000_000];
 
 Random random = new Random();
-
-Stopwatch sw = new Stopwatch();
-
 
 for (int i = 0; i < numbers.Length; i++)
 {
     numbers[i] = random.Next(-10_000, 10_001);
 }
 
-subArrayLength = (int)Math.Ceiling(numbers.Length / (decimal)tasksCount);
+int tasksCount = 10;
 
-Task<long>[] tasks = new Task<long>[tasksCount];
+Stopwatch sw = new Stopwatch();
 
 sw.Start();
 
-for (int i = 0; i < tasks.Length; i++)
-{
-    startIndex = endIndex;
-    endIndex = (i == tasks.Length - 1) ? numbers.Length : startIndex + subArrayLength;
-
-    tasks[i] = Task.Run(() => Sum(numbers, startIndex, endIndex));
-
-    resultSum += tasks[i].Result;
-}
-
-Console.WriteLine("resultSum = " + resultSum);
+long resultSum = GetArrayTotalSum(numbers, tasksCount).Result;
 
 sw.Stop();
 
-Console.WriteLine(sw.ElapsedMilliseconds);
+Console.WriteLine($"TotalSum: {resultSum}\nTime: {sw.ElapsedMilliseconds} ms");
 
+
+async Task<long> GetArrayTotalSum(int[] numbers, int tasksCount)
+{
+    int subArrayLength = (int)Math.Ceiling(numbers.Length / (decimal)tasksCount);
+
+    Task<long>[] tasks = new Task<long>[tasksCount];
+
+    for (int i = 0; i < tasks.Length; i++)
+    {
+        int startIndex = i * subArrayLength;
+        int endIndex = (i == tasks.Length - 1) ? numbers.Length : startIndex + subArrayLength;
+
+        tasks[i] = Task.Run(() => Sum(numbers, startIndex, endIndex));
+    }
+
+    long[] tasksResults = await Task.WhenAll(tasks);
+
+    long resultSum = 0;
+
+    foreach (long result in tasksResults)
+    {
+        resultSum += result;
+    }
+
+    return resultSum;
+}
 
 long Sum(int[] numbers, int startIndex, int endIndex)
 {
